@@ -172,8 +172,9 @@ class State:
         # Copy simple attributes
         new_state.world_size = self.world_size.copy()
 
-        # Deep copy the ground array (2D list of Vector2)
-        new_state.ground = [[tile.copy() for tile in row] for row in self.ground]
+        new_state.ground = self.ground
+        new_state.walls = self.walls
+        new_state.containers = self.containers
 
         # Copy item lists, but recreate items with new state reference
         new_state.lavas = [
@@ -192,10 +193,6 @@ class State:
             Item(new_state, goal.position.copy(), goal.tile.copy())
             for goal in self.goals
         ]
-        new_state.walls = [
-            Item(new_state, wall.position.copy(), wall.tile.copy())
-            for wall in self.walls
-        ]
         new_state.players = [
             Player(new_state, player.position.copy(), player.tile.copy())
             for player in self.players
@@ -203,10 +200,6 @@ class State:
         new_state.points = [
             Item(new_state, point.position.copy(), point.tile.copy())
             for point in self.points
-        ]
-        new_state.containers = [
-            Item(new_state, container.position.copy(), container.tile.copy())
-            for container in self.containers
         ]
         new_state.deads = [
             Item(new_state, dead.position.copy(), dead.tile.copy())
