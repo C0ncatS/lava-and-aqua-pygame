@@ -1,14 +1,15 @@
+from dataclasses import dataclass
 from pygame.math import Vector2
 
 
+@dataclass(frozen=True)
 class Position:
+    x: float
+    y: float
+
     @staticmethod
     def from_vector(vector: Vector2):
         return Position(vector.x, vector.y)
-
-    def __init__(self, x: float, y: float):
-        self.x = x
-        self.y = y
 
     def to_vector(self):
         return Vector2(self.x, self.y)

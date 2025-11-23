@@ -158,7 +158,7 @@ class UserInterface(StateObserver):
 
             return
 
-        direction = Position(0, 0)
+        direction = Vector2(0, 0)
         undo_requested = False
         redo_requested = False
 
@@ -193,7 +193,7 @@ class UserInterface(StateObserver):
             self.perform_redo()
         # Handle movement
         elif direction.x != 0 or direction.y != 0:
-            command = MoveCommand(self.state, self.player, direction)
+            command = MoveCommand(self.state, self.player, Position.from_vector(direction))
             self.commands.append(command)
 
     def update(self):
