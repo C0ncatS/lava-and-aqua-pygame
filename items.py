@@ -1,5 +1,8 @@
+from position import Position
+
+
 class Item:
-    def __init__(self, state, position, tile):
+    def __init__(self, state, position: Position, tile):
         self.state = state
         self.position = position
         self.tile = tile

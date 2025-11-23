@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 import pygame
 from pygame.math import Vector2
 
-from items import Item
+from items import Item, Player, Timer
 from observers import StateObserver
+from position import Position
 
 
 class Layer(ABC, StateObserver):
@@ -111,14 +112,14 @@ class GroundLayer(ArrayLayer):
 
 
 class UnitLayer(Layer):
-    def __init__(self, cell_size, image_file, state, units):
+    def __init__(self, cell_size, image_file, state, units: dict[Position, Item]):
         super().__init__(cell_size, image_file)
         self.state = state
         self.units = units
 
     def render(self, surface):
-        for unit in self.units:
-            self.render_tile(surface, unit.position, unit.tile)
+        for unit in self.units.values():
+            self.render_tile(surface, unit.position.to_vector(), unit.tile)
 
     def state_restored(self, new_state):
         self.state = new_state
@@ -137,12 +138,11 @@ class ContainerLayer(UnitLayer):
 
 
 class StoneLayer(UnitLayer):
-    def add(self, position):
+    def add(self, position: Position):
         new_stone = Item(self.state, position, Vector2(0, 0))
-        self.units.append(new_stone)
-        for player in self.state.players:
-            if player.position == position:
-                self.state.notify_player_died(player)
+        self.units[position] = new_stone
+        if self.state.player.position == position:
+            self.state.notify_player_died(self.state.player)
 
     def aqua_touched_lava(self, position):
         self.add(position)
@@ -155,27 +155,32 @@ class StoneLayer(UnitLayer):
         self.units = new_state.stones
 
 
-class GoalLayer(UnitLayer):
+class GoalLayer(Layer):
+    def __init__(self, cell_size, image_file, state, goal):
+        super().__init__(cell_size, image_file)
+        self.state = state
+        self.goal = goal
+
     def player_reached_goal(self, player):
         if self.state.is_points_empty():
             player.status = "won"
             self.state.notify_player_won(player)
 
     def state_restored(self, new_state):
-        super().state_restored(new_state)
-        self.units = new_state.goals
+        self.state = new_state
+        self.goal = new_state.goal
+
+    def render(self, surface):
+        self.render_tile(surface, self.goal.position.to_vector(), self.goal.tile)
 
 
 class LiquidLayer(UnitLayer):
-    def block_moved(self, block):
-        new_liquids = [
-            liquid for liquid in self.units if liquid.position != block.position
-        ]
-        self.units[:] = new_liquids
+    def reduce(self, position: Position):
+        if position in self.units:
+            self.units.pop(position)
 
-    def reduce(self, position):
-        new_liquids = [liquid for liquid in self.units if liquid.position != position]
-        self.units[:] = new_liquids
+    def block_moved(self, block):
+        self.reduce(block.position)
 
 
 class AquaLayer(LiquidLayer):
@@ -196,24 +201,30 @@ class LavaLayer(LiquidLayer):
         self.units = new_state.lavas
 
 
-class PlayerLayer(UnitLayer):
+class PlayerLayer(Layer):
+    def __init__(self, cell_size, image_file, state, player: Player):
+        super().__init__(cell_size, image_file)
+        self.state = state
+        self.player = player
+
     def player_died(self, player):
-        for p in self.units:
-            if p.position == player.position:
-                p.status = "dead"
+        self.player.status = "dead"
 
     def state_restored(self, new_state):
-        super().state_restored(new_state)
-        self.units = new_state.players
+        self.state = new_state
+        self.player = new_state.player
+
+    def render(self, surface):
+        self.render_tile(surface, self.player.position.to_vector(), self.player.tile)
 
 
 class DeadLayer(UnitLayer):
-    def add(self, player):
-        dead = Item(self.state, player.position, player.tile)
-        self.units.append(dead)
+    def add(self, position: Position):
+        dead = Item(self.state, position, Vector2(0, 0))
+        self.units[position] = dead
 
     def player_died(self, player):
-        self.add(player)
+        self.add(player.position)
 
     def state_restored(self, new_state):
         super().state_restored(new_state)
@@ -227,14 +238,12 @@ class BlockLayer(UnitLayer):
 
 
 class PointLayer(UnitLayer):
-    def update(self, player):
-        new_points = [
-            point for point in self.units if point.position != player.position
-        ]
-        self.units[:] = new_points
+    def update(self, position: Position):
+        if position in self.units:
+            self.units.pop(position)
 
-    def player_moved(self, player, move_vector):
-        self.update(player)
+    def player_moved(self, player, direction):
+        self.update(player.position)
 
     def state_restored(self, new_state):
         super().state_restored(new_state)
@@ -242,15 +251,26 @@ class PointLayer(UnitLayer):
 
 
 class TimerLayer(Layer):
-    def __init__(self, cell_size, image_file, font_file, state, timers):
+    def __init__(
+        self,
+        cell_size,
+        image_file,
+        font_file,
+        state,
+        timers: dict[Position, Timer],
+    ):
         super().__init__(cell_size, image_file, font_file)
         self.state = state
         self.timers = timers
 
     def render(self, surface):
-        for timer in self.timers:
-            self.render_tile(surface, timer.position, timer.tile)
-            self.render_font(surface, timer.position, str(int(timer.duration)))
+        for timer in self.timers.values():
+            self.render_tile(surface, timer.position.to_vector(), timer.tile)
+            self.render_font(
+                surface,
+                timer.position.to_vector(),
+                str(int(timer.duration)),
+            )
 
     def state_restored(self, new_state):
         self.state = new_state

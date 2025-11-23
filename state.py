@@ -1,34 +1,35 @@
 from pygame.math import Vector2
 
 from items import Item, Block, Liquid, Player, Timer
+from position import Position
 
 
 class State:
     def __init__(self, level_file="levels/level-1.txt"):
         level_data, world_size = self.read_level_file(level_file)
         self.world_size = world_size
-        self.moves = [Vector2(0, 1), Vector2(1, 0), Vector2(0, -1), Vector2(-1, 0)]
+        self.moves = [Position(0, 1), Position(1, 0), Position(0, -1), Position(-1, 0)]
         self.ground = []
-        self.lavas = []
-        self.aquas = []
-        self.goals = []
-        self.blocks = []
-        self.players = []
-        self.points = []
-        self.timers = []
-        self.containers = []
-        self.walls = []
-        self.deads = []
-        self.stones = []
+        self.lavas: dict[Position, Liquid] = {}
+        self.aquas: dict[Position, Liquid] = {}
+        self.goal = None
+        self.blocks: dict[Position, Block] = {}
+        self.player = None
+        self.points: dict[Position, Item] = {}
+        self.timers: dict[Position, Timer] = {}
+        self.containers: dict[Position, Item] = {}
+        self.walls: dict[Position, Item] = {}
+        self.deads: dict[Position, Item] = {}
+        self.stones: dict[Position, Item] = {}
         self.parse_level(level_data)
         self.ground = [
             [Vector2(0, 0) for _ in range(int(self.world_size.x))]
             for _ in range(int(self.world_size.y))
         ]
         self.observers = []
-        if not self.goals:
+        if not self.goal:
             raise ValueError("No goal found in level file")
-        if not self.players:
+        if not self.player:
             raise ValueError("No player found in level file")
 
     @property
@@ -42,31 +43,31 @@ class State:
     def add_observer(self, observer):
         self.observers.append(observer)
 
-    def notify_player_moved(self, player, move_vector):
+    def notify_player_moved(self, player: Player, direction: Position):
         for observer in self.observers:
-            observer.player_moved(player, move_vector)
+            observer.player_moved(player, direction)
 
-    def notify_player_died(self, player):
+    def notify_player_died(self, player: Player):
         for observer in self.observers:
             observer.player_died(player)
 
-    def notify_aqua_touched_lava(self, position):
+    def notify_aqua_touched_lava(self, position: Position):
         for observer in self.observers:
             observer.aqua_touched_lava(position)
 
-    def notify_lava_touched_aqua(self, position):
+    def notify_lava_touched_aqua(self, position: Position):
         for observer in self.observers:
             observer.lava_touched_aqua(position)
 
-    def notify_block_moved(self, block):
+    def notify_block_moved(self, block: Block):
         for observer in self.observers:
             observer.block_moved(block)
 
-    def notify_player_reached_goal(self, player):
+    def notify_player_reached_goal(self, player: Player):
         for observer in self.observers:
             observer.player_reached_goal(player)
 
-    def notify_player_won(self, player):
+    def notify_player_won(self, player: Player):
         for observer in self.observers:
             observer.player_won(player)
 
@@ -74,40 +75,35 @@ class State:
         for observer in self.observers:
             observer.state_restored(self)
 
-    def get_possible_moves(self, position: Vector2, **kwargs) -> list[Vector2]:
+    def get_possible_moves(self, position: Position, **kwargs) -> list[Position]:
         possible_moves = []
         for move in self.moves:
-            new_pos = position + move
+            new_pos = Position.from_vector(position.to_vector() + move.to_vector())
             if self.can_move(new_pos, **kwargs):
                 possible_moves.append(move)
         return possible_moves
 
-    def can_move(self, position, **kwargs):
-        for wall in self.walls:
-            if wall.position == position:
-                return False
+    def can_move(self, position: Position, **kwargs):
+        if position in self.walls:
+            return False
 
-        for stone in self.stones:
-            if stone.position == position:
-                return False
+        if position in self.stones:
+            return False
 
-        for timer in self.timers:
-            if timer.position == position:
-                return False
+        if position in self.timers:
+            return False
 
         if kwargs.get("check_containers", True):
-            for container in self.containers:
-                if container.position == position:
-                    return False
+            if position in self.containers:
+                return False
 
         if kwargs.get("check_blocks", True):
-            for block in self.blocks:
-                if block.position == position:
-                    return False
+            if position in self.blocks:
+                return False
 
         return self.is_inside(position)
 
-    def is_inside(self, position):
+    def is_inside(self, position: Position):
         return (
             position.x >= 0
             and position.x < self.world_width
@@ -118,11 +114,8 @@ class State:
     def is_points_empty(self):
         return len(self.points) == 0
 
-    def is_goal(self, position):
-        for goal in self.goals:
-            if goal.position == position:
-                return True
-        return False
+    def is_goal(self, position: Position):
+        return position == self.goal.position
 
     def parse_level(self, level_data):
         for item in level_data:
@@ -130,23 +123,32 @@ class State:
             y = item["row"]
             char = item["char"]
             if char == "L":
-                self.lavas.append(Liquid(self, Vector2(x, y), Vector2(0, 0)))
+                self.lavas[Position(x, y)] = Liquid(self, Position(x, y), Vector2(0, 0))
             elif char == "A":
-                self.aquas.append(Liquid(self, Vector2(x, y), Vector2(0, 0)))
+                self.aquas[Position(x, y)] = Liquid(self, Position(x, y), Vector2(0, 0))
             elif char == "B":
-                self.blocks.append(Block(self, Vector2(x, y), Vector2(0, 0)))
+                self.blocks[Position(x, y)] = Block(self, Position(x, y), Vector2(0, 0))
             elif char == "G":
-                self.goals.append(Item(self, Vector2(x, y), Vector2(0, 0)))
+                self.goal = Item(self, Position(x, y), Vector2(0, 0))
             elif char == "#":
-                self.walls.append(Item(self, Vector2(x, y), Vector2(0, 0)))
+                self.walls[Position(x, y)] = Item(self, Position(x, y), Vector2(0, 0))
             elif char == "U":
-                self.players.append(Player(self, Vector2(x, y), Vector2(0, 0)))
+                self.player = Player(self, Position(x, y), Vector2(0, 0))
             elif char == "*":
-                self.points.append(Item(self, Vector2(x, y), Vector2(0, 0)))
+                self.points[Position(x, y)] = Item(self, Position(x, y), Vector2(0, 0))
             elif char.isdigit():
-                self.timers.append(Timer(self, Vector2(x, y), Vector2(0, 0), int(char)))
+                self.timers[Position(x, y)] = Timer(
+                    self,
+                    Position(x, y),
+                    Vector2(0, 0),
+                    int(char),
+                )
             elif char == "I":
-                self.containers.append(Item(self, Vector2(x, y), Vector2(0, 0)))
+                self.containers[Position(x, y)] = Item(
+                    self,
+                    Position(x, y),
+                    Vector2(0, 0),
+                )
 
     def read_level_file(self, filename):
         level_data = []
@@ -177,47 +179,49 @@ class State:
         new_state.containers = self.containers
 
         # Copy item lists, but recreate items with new state reference
-        new_state.lavas = [
-            Liquid(new_state, liq.position.copy(), liq.tile.copy())
-            for liq in self.lavas
-        ]
-        new_state.aquas = [
-            Liquid(new_state, liq.position.copy(), liq.tile.copy())
-            for liq in self.aquas
-        ]
-        new_state.blocks = [
-            Block(new_state, block.position.copy(), block.tile.copy())
-            for block in self.blocks
-        ]
-        new_state.goals = [
-            Item(new_state, goal.position.copy(), goal.tile.copy())
-            for goal in self.goals
-        ]
-        new_state.players = [
-            Player(new_state, player.position.copy(), player.tile.copy())
-            for player in self.players
-        ]
-        new_state.points = [
-            Item(new_state, point.position.copy(), point.tile.copy())
-            for point in self.points
-        ]
-        new_state.deads = [
-            Item(new_state, dead.position.copy(), dead.tile.copy())
-            for dead in self.deads
-        ]
-        new_state.stones = [
-            Item(new_state, stone.position.copy(), stone.tile.copy())
-            for stone in self.stones
-        ]
-        # Copy timers with their duration
-        new_state.timers = [
-            Timer(new_state, timer.position.copy(), timer.tile.copy(), timer.duration)
-            for timer in self.timers
-        ]
+        new_state.lavas = {
+            pos: Liquid(new_state, liq.position, liq.tile.copy())
+            for pos, liq in self.lavas.items()
+        }
+        new_state.aquas = {
+            pos: Liquid(new_state, liq.position, liq.tile.copy())
+            for pos, liq in self.aquas.items()
+        }
+        new_state.blocks = {
+            pos: Block(new_state, block.position, block.tile.copy())
+            for pos, block in self.blocks.items()
+        }
 
+        new_state.goal = Item(
+            new_state,
+            self.goal.position,
+            self.goal.tile.copy(),
+        )
+        new_state.player = Player(
+            new_state,
+            self.player.position,
+            self.player.tile.copy(),
+        )
         # Copy status for items that have it
-        for i, player in enumerate(self.players):
-            new_state.players[i].status = player.status
+        new_state.player.status = self.player.status
+
+        new_state.points = {
+            pos: Item(new_state, point.position, point.tile.copy())
+            for pos, point in self.points.items()
+        }
+        new_state.deads = {
+            pos: Item(new_state, dead.position, dead.tile.copy())
+            for pos, dead in self.deads.items()
+        }
+        new_state.stones = {
+            pos: Item(new_state, stone.position, stone.tile.copy())
+            for pos, stone in self.stones.items()
+        }
+        # Copy timers with their duration
+        new_state.timers = {
+            pos: Timer(new_state, timer.position, timer.tile.copy(), timer.duration)
+            for pos, timer in self.timers.items()
+        }
 
         new_state.observers = []
 

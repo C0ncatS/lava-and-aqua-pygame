@@ -20,6 +20,7 @@ from layers import (
 from commands import MoveCommand
 from popup import GameOverPopup, VictoryPopup
 from history import HistoryManager
+from position import Position
 
 
 class UserInterface(StateObserver):
@@ -61,7 +62,7 @@ class UserInterface(StateObserver):
                 self.cell_size,
                 "assets/goal.png",
                 self.state,
-                self.state.goals,
+                self.state.goal,
             ),
             BlockLayer(
                 self.cell_size,
@@ -73,7 +74,7 @@ class UserInterface(StateObserver):
                 self.cell_size,
                 "assets/player.png",
                 self.state,
-                self.state.players,
+                self.state.player,
             ),
             DeadLayer(
                 self.cell_size,
@@ -108,8 +109,8 @@ class UserInterface(StateObserver):
         ]
 
         self.commands = []
-        self.player = self.state.players[0]
-        self.goal = self.state.goals[0]
+        self.player = self.state.player
+        self.goal = self.state.goal
 
         self.history = HistoryManager(max_history_size=100, state=self.state)
 
@@ -157,7 +158,7 @@ class UserInterface(StateObserver):
 
             return
 
-        move_vector = Vector2()
+        direction = Position(0, 0)
         undo_requested = False
         redo_requested = False
 
@@ -176,13 +177,13 @@ class UserInterface(StateObserver):
                 elif event.key == pygame.K_u:
                     redo_requested = True
                 elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                    move_vector.x = 1
+                    direction.x = 1
                 elif event.key in [pygame.K_LEFT, pygame.K_a]:
-                    move_vector.x = -1
+                    direction.x = -1
                 elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                    move_vector.y = 1
+                    direction.y = 1
                 elif event.key in [pygame.K_UP, pygame.K_w]:
-                    move_vector.y = -1
+                    direction.y = -1
 
         # Handle undo
         if undo_requested:
@@ -191,8 +192,8 @@ class UserInterface(StateObserver):
         elif redo_requested:
             self.perform_redo()
         # Handle movement
-        elif move_vector.x != 0 or move_vector.y != 0:
-            command = MoveCommand(self.state, self.player, move_vector)
+        elif direction.x != 0 or direction.y != 0:
+            command = MoveCommand(self.state, self.player, direction)
             self.commands.append(command)
 
     def update(self):
@@ -234,8 +235,8 @@ class UserInterface(StateObserver):
     def restore_state(self, new_state):
         self.state = new_state
 
-        self.player = self.state.players[0] if self.state.players else self.player
-        self.goal = self.state.goals[0] if self.state.goals else self.goal
+        self.player = self.state.player if self.state.player else self.player
+        self.goal = self.state.goal if self.state.goal else self.goal
 
         for layer in reversed(self.layers):
             self.state.add_observer(layer)

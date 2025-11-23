@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from pygame import Vector2
-
-from items import Liquid
+from items import Block, Liquid, Player, Timer
+from position import Position
+from state import State
 
 
 class Command(ABC):
@@ -12,28 +12,32 @@ class Command(ABC):
 
 
 class MoveCommand(Command):
-    def __init__(self, state, player, move_vector):
+    def __init__(self, state: State, player: Player, direction: Position):
         self.state = state
         self.player = player
-        self.move_vector = move_vector
+        self.direction = direction
 
     def run(self):
         if self.player.status != "alive":
             return
 
-        new_pos = self.player.position + (self.move_vector * self.player.speed)
+        new_pos = Position.from_vector(
+            self.player.position.to_vector()
+            + (self.direction.to_vector() * self.player.speed)
+        )
 
         if not self.state.can_move(new_pos, check_blocks=False):
             return
 
-        for block in self.state.blocks:
-            if block.position == new_pos:
-                new_block_pos = block.position + (self.move_vector * block.speed)
-                if self.state.can_move(new_block_pos):
-                    BlockMoveCommand(self.state, block, self.move_vector).run()
-                    break
-                else:
-                    return
+        if new_pos in self.state.blocks:
+            block = self.state.blocks[new_pos]
+            new_block_pos = Position.from_vector(
+                block.position.to_vector() + self.direction.to_vector() * block.speed
+            )
+            if self.state.can_move(new_block_pos):
+                BlockMoveCommand(self.state, block, self.direction).run()
+            else:
+                return
 
         self.player.position = new_pos
 
@@ -41,7 +45,7 @@ class MoveCommand(Command):
             self.state.notify_player_reached_goal(self.player)
 
         # notify observers that the player moved
-        self.state.notify_player_moved(self.player, self.move_vector)
+        self.state.notify_player_moved(self.player, self.direction)
 
         AquaSpreadCommand(self.state, self.state.aquas).run()
         LavaSpreadCommand(self.state, self.state.lavas).run()
@@ -49,46 +53,54 @@ class MoveCommand(Command):
 
 
 class BlockMoveCommand(Command):
-    def __init__(self, state, block, move_vector):
+    def __init__(self, state: State, block: Block, direction: Position):
         self.state = state
         self.block = block
-        self.move_vector = move_vector
+        self.direction = direction
 
     def run(self):
         # in move command we already check that the block can move. no need to check here
-        self.block.position += self.move_vector * self.block.speed
-        self.state.notify_block_moved(self.block)
+        new_pos = Position.from_vector(
+            self.block.position.to_vector()
+            + self.direction.to_vector() * self.block.speed
+        )
+        self.state.blocks.pop(self.block.position)
+        new_block = Block(self.state, new_pos, self.block.tile)
+        self.state.blocks[new_pos] = new_block
+        self.state.notify_block_moved(new_block)
 
 
 class SpreadCommand(Command):
-    moves = [Vector2(0, 1), Vector2(1, 0), Vector2(0, -1), Vector2(-1, 0)]
+    moves = [Position(0, 1), Position(1, 0), Position(0, -1), Position(-1, 0)]
 
-    def __init__(self, state, liquids):
+    def __init__(self, state: State, liquids: dict[Position, Liquid]):
         self.state = state
         self.liquids = liquids
 
-    def can_move(self, position):
+    def can_move(self, position: Position):
         return self.state.can_move(position, check_containers=False)
 
-    def add(self, position, liquid):
+    def add(self, position: Position, liquid: Liquid):
         new_liquid = Liquid(self.state, position, liquid.tile)
-        self.liquids.append(new_liquid)
+        self.liquids[position] = new_liquid
 
 
 class AquaSpreadCommand(SpreadCommand):
     def run(self):
-        current_aquas = self.liquids[:]
+        current_aquas = list(self.liquids.values())
         for aqua in current_aquas:
             for move in self.moves:
-                new_pos = aqua.position + (move * aqua.speed)
+                new_pos = Position.from_vector(
+                    aqua.position.to_vector() + move.to_vector() * aqua.speed
+                )
 
                 if not self.can_move(new_pos):
                     continue
 
-                if any(liquid.position == new_pos for liquid in self.liquids):
+                if new_pos in self.liquids:
                     continue
 
-                if any(lava.position == new_pos for lava in self.state.lavas):
+                if new_pos in self.state.lavas:
                     self.state.notify_aqua_touched_lava(new_pos)
                     continue
 
@@ -97,41 +109,44 @@ class AquaSpreadCommand(SpreadCommand):
 
 class LavaSpreadCommand(SpreadCommand):
     def run(self):
-        current_lavas = self.liquids[:]
+        current_lavas = list(self.liquids.values())
         for lava in current_lavas:
             for move in self.moves:
-                new_pos = lava.position + (move * lava.speed)
+                new_pos = Position.from_vector(
+                    lava.position.to_vector() + move.to_vector() * lava.speed
+                )
 
                 if not self.can_move(new_pos):
                     continue
 
-                if any(liquid.position == new_pos for liquid in self.liquids):
+                if new_pos in self.liquids:
                     continue
 
-                if any(aqua.position == new_pos for aqua in self.state.aquas):
+                if new_pos in self.state.aquas:
                     self.state.notify_lava_touched_aqua(new_pos)
                     continue
 
                 self.add(new_pos, lava)
 
-        for lava in self.liquids:
-            for player in self.state.players:
-                if player.position == lava.position:
-                    self.state.notify_player_died(player)
+        if self.state.player.position in self.state.lavas:
+            self.state.notify_player_died(self.state.player)
 
 
 class TimerCommand(Command):
-    def __init__(self, state, timers):
+    def __init__(self, state: State, timers: dict[Position, Timer]):
         self.state = state
         self.timers = timers
 
-    def decrement(self, value):
-        for timer in self.timers:
+    def decrement(self, value: int):
+        for timer in self.timers.values():
             timer.duration -= value
 
     def filter(self):
-        new_timers = [timer for timer in self.timers if timer.duration > 0]
-        self.timers[:] = new_timers
+        new_timers = {
+            pos: timer for pos, timer in self.timers.items() if timer.duration > 0
+        }
+        self.timers.clear()
+        self.timers.update(new_timers)
 
     def run(self):
         self.decrement(1)
