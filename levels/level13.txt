@@ -1,0 +1,11 @@
+# # # # # # # # # # # # # # # #
+# . # L L L L L L L L L L # . #
+# . # L L L L * * L L L L # . #
+# . # L L B B B B B B L L # . #
+# . # L L B . . . . B L L # . #
+# A # L * B . U G . B * L # A #
+# . # L L B . . . . B L L # . #
+# . # L L B B B B B B L L # . #
+# . # L L L L * * L L L L # . #
+# . # L L L L L L L L L L # . #
+# # # # # # # # # # # # # # # #
