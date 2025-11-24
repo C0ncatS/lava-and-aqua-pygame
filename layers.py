@@ -4,11 +4,11 @@ import pygame
 from pygame.math import Vector2
 
 from items import Item, Player, Timer
-from observers import StateObserver
+from observers import Observer
 from position import Position
 
 
-class Layer(ABC, StateObserver):
+class Layer(ABC, Observer):
     def __init__(self, cell_size, image_file, font_file=None):
         self.cell_size = cell_size
         self.texture = pygame.image.load(image_file)
@@ -242,7 +242,7 @@ class PointLayer(UnitLayer):
         if position in self.units:
             self.units.pop(position)
 
-    def player_moved(self, player, direction):
+    def player_moved(self, player, move):
         self.update(player.position)
 
     def state_restored(self, new_state):

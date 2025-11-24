@@ -12,10 +12,10 @@ class Command(ABC):
 
 
 class MoveCommand(Command):
-    def __init__(self, state: State, player: Player, direction: Position):
+    def __init__(self, state: State, player: Player, move: Position):
         self.state = state
         self.player = player
-        self.direction = direction
+        self.move = move
 
     def run(self):
         if self.player.status != "alive":
@@ -23,7 +23,7 @@ class MoveCommand(Command):
 
         new_pos = Position.from_vector(
             self.player.position.to_vector()
-            + (self.direction.to_vector() * self.player.speed)
+            + (self.move.to_vector() * self.player.speed)
         )
 
         if not self.state.can_move(new_pos, check_blocks=False):
@@ -32,10 +32,10 @@ class MoveCommand(Command):
         if new_pos in self.state.blocks:
             block = self.state.blocks[new_pos]
             new_block_pos = Position.from_vector(
-                block.position.to_vector() + self.direction.to_vector() * block.speed
+                block.position.to_vector() + self.move.to_vector() * block.speed
             )
             if self.state.can_move(new_block_pos):
-                BlockMoveCommand(self.state, block, self.direction).run()
+                BlockMoveCommand(self.state, block, self.move).run()
             else:
                 return
 
@@ -45,7 +45,7 @@ class MoveCommand(Command):
             self.state.notify_player_reached_goal(self.player)
 
         # notify observers that the player moved
-        self.state.notify_player_moved(self.player, self.direction)
+        self.state.notify_player_moved(self.player, self.move)
 
         AquaSpreadCommand(self.state, self.state.aquas).run()
         LavaSpreadCommand(self.state, self.state.lavas).run()
@@ -53,16 +53,16 @@ class MoveCommand(Command):
 
 
 class BlockMoveCommand(Command):
-    def __init__(self, state: State, block: Block, direction: Position):
+    def __init__(self, state: State, block: Block, move: Position):
         self.state = state
         self.block = block
-        self.direction = direction
+        self.move = move
 
     def run(self):
         # in move command we already check that the block can move. no need to check here
         new_pos = Position.from_vector(
             self.block.position.to_vector()
-            + self.direction.to_vector() * self.block.speed
+            + self.move.to_vector() * self.block.speed
         )
         self.state.blocks.pop(self.block.position)
         new_block = Block(self.state, new_pos, self.block.tile)
