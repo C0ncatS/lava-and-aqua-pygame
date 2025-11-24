@@ -1,6 +1,15 @@
 from pygame.math import Vector2
 
 from items import Item, Block, Liquid, Player, Timer
+from observers import (
+    StoneObserver,
+    PointObserver,
+    DeadObserver,
+    PlayerObserver,
+    GoalObserver,
+    AquaObserver,
+    LavaObserver,
+)
 from position import Position
 
 
@@ -8,7 +17,7 @@ class State:
     def __init__(self, level_file="levels/level-1.txt"):
         level_data, world_size = self.read_level_file(level_file)
         self.world_size = world_size
-        self.moves = [Position(0, 1), Position(1, 0), Position(0, -1), Position(-1, 0)]
+        self.moves = [Position(0, 1), Position(0, -1), Position(1, 0), Position(-1, 0)]
         self.ground = []
         self.lavas: dict[Position, Liquid] = {}
         self.aquas: dict[Position, Liquid] = {}
@@ -26,7 +35,15 @@ class State:
             [Vector2(0, 0) for _ in range(int(self.world_size.x))]
             for _ in range(int(self.world_size.y))
         ]
-        self.observers = []
+        self.observers = [
+            StoneObserver(self),
+            PointObserver(self),
+            DeadObserver(self),
+            PlayerObserver(self),
+            GoalObserver(self),
+            AquaObserver(self),
+            LavaObserver(self),
+        ]
         if not self.goal:
             raise ValueError("No goal found in level file")
         if not self.player:
@@ -43,9 +60,12 @@ class State:
     def add_observer(self, observer):
         self.observers.append(observer)
 
-    def notify_player_moved(self, player: Player, direction: Position):
+    def clear_observers(self):
+        self.observers.clear()
+
+    def notify_player_moved(self, player: Player, move: Position):
         for observer in self.observers:
-            observer.player_moved(player, direction)
+            observer.player_moved(player, move)
 
     def notify_player_died(self, player: Player):
         for observer in self.observers:
@@ -117,6 +137,9 @@ class State:
     def is_goal(self, position: Position):
         return position == self.goal.position
 
+    def is_won(self):
+        return self.is_points_empty() and self.is_goal(self.player.position)
+
     def parse_level(self, level_data):
         for item in level_data:
             x = item["column"]
@@ -172,8 +195,8 @@ class State:
         new_state = cls.__new__(cls)
 
         # Copy simple attributes
+        new_state.moves = self.moves
         new_state.world_size = self.world_size.copy()
-
         new_state.ground = self.ground
         new_state.walls = self.walls
         new_state.containers = self.containers
@@ -223,6 +246,49 @@ class State:
             for pos, timer in self.timers.items()
         }
 
-        new_state.observers = []
+        new_state.observers = [
+            StoneObserver(new_state),
+            PointObserver(new_state),
+            DeadObserver(new_state),
+            PlayerObserver(new_state),
+            GoalObserver(new_state),
+            AquaObserver(new_state),
+            LavaObserver(new_state),
+        ]
 
         return new_state
+
+    def __hash__(self) -> int:
+        # lavas, aquas, blocks, player, points, timers, deads, and stones
+        return hash(
+            (
+                frozenset(self.lavas.keys()),
+                frozenset(self.aquas.keys()),
+                frozenset(self.blocks.keys()),
+                (self.player.position, self.player.status),
+                frozenset(self.points.keys()),
+                frozenset((pos, timer.duration) for pos, timer in self.timers.items()),
+                frozenset(self.deads.keys()),
+                frozenset(self.stones.keys()),
+            )
+        )
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, State):
+            return False
+        return (
+            self.lavas.keys() == other.lavas.keys()
+            and self.aquas.keys() == other.aquas.keys()
+            and self.blocks.keys() == other.blocks.keys()
+            and self.player.position == other.player.position
+            and self.player.status == other.player.status
+            and self.points.keys() == other.points.keys()
+            and all(
+                self.timers[pos].duration == other.timers[pos].duration
+                for pos in self.timers.keys()
+                if pos in other.timers.keys()
+            )
+            and self.timers.keys() == other.timers.keys()
+            and self.deads.keys() == other.deads.keys()
+            and self.stones.keys() == other.stones.keys()
+        )

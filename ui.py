@@ -1,8 +1,10 @@
+import time
+
 import pygame
 from pygame import Vector2
 
 from state import State
-from observers import StateObserver
+from observers import Observer
 from layers import (
     GroundLayer,
     BlockLayer,
@@ -21,9 +23,10 @@ from commands import MoveCommand
 from popup import GameOverPopup, VictoryPopup
 from history import HistoryManager
 from position import Position
+from algorithms import BFS, DFS
 
 
-class UserInterface(StateObserver):
+class UserInterface(Observer):
     def __init__(self, level_file="levels/level-1.txt"):
         pygame.init()
 
@@ -114,6 +117,7 @@ class UserInterface(StateObserver):
 
         self.history = HistoryManager(max_history_size=100, state=self.state)
 
+        self.state.clear_observers()
         for layer in reversed(self.layers):
             self.state.add_observer(layer)
 
@@ -158,7 +162,7 @@ class UserInterface(StateObserver):
 
             return
 
-        direction = Vector2(0, 0)
+        move = Vector2(0, 0)
         undo_requested = False
         redo_requested = False
 
@@ -177,13 +181,13 @@ class UserInterface(StateObserver):
                 elif event.key == pygame.K_u:
                     redo_requested = True
                 elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                    direction.x = 1
+                    move.x = 1
                 elif event.key in [pygame.K_LEFT, pygame.K_a]:
-                    direction.x = -1
+                    move.x = -1
                 elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                    direction.y = 1
+                    move.y = 1
                 elif event.key in [pygame.K_UP, pygame.K_w]:
-                    direction.y = -1
+                    move.y = -1
 
         # Handle undo
         if undo_requested:
@@ -192,8 +196,8 @@ class UserInterface(StateObserver):
         elif redo_requested:
             self.perform_redo()
         # Handle movement
-        elif direction.x != 0 or direction.y != 0:
-            command = MoveCommand(self.state, self.player, Position.from_vector(direction))
+        elif move.x != 0 or move.y != 0:
+            command = MoveCommand(self.state, self.player, Position.from_vector(move))
             self.commands.append(command)
 
     def update(self):
@@ -238,6 +242,7 @@ class UserInterface(StateObserver):
         self.player = self.state.player if self.state.player else self.player
         self.goal = self.state.goal if self.state.goal else self.goal
 
+        self.state.clear_observers()
         for layer in reversed(self.layers):
             self.state.add_observer(layer)
 
@@ -254,10 +259,22 @@ class UserInterface(StateObserver):
         self.victory_popup.show()
 
     def run(self):
+        bfs = BFS()
+        start_time = time.time()
+        bfs(self.state)
+        end_time = time.time()
+        print(f"BFS time: {end_time - start_time} seconds")
+        print(f"BFS nodes: {bfs.nodes}")
+        print(f"BFS path length: {len(bfs.path)}")
+        timer = 0
         while self.running:
             self.process_input()
+            if bfs.path and timer == 0:
+                self.commands.append(MoveCommand(self.state, self.player, bfs.path.popleft()))
+                timer += 10
             self.update()
             self.render()
             self.clock.tick(60)
+            timer -= 1
 
         return self.popup_action
