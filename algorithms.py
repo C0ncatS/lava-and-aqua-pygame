@@ -1,4 +1,5 @@
-from enum import Enum, auto
+from abc import ABC, abstractmethod
+from enum import Enum
 from collections import deque
 from functools import cached_property
 
@@ -7,12 +8,26 @@ from commands import MoveCommand
 from position import Position
 
 
-class Algo(Enum):
-    DFS = auto()
-    BFS = auto()
+class Algorithms(Enum):
+    DFS = "dfs"
+    BFS = "bfs"
 
 
-class DFS:
+class Algorithm(ABC):
+    @abstractmethod
+    def get_nodes(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_path(self) -> deque[Position] | None:
+        pass
+
+    @abstractmethod
+    def __call__(self, state: State):
+        pass
+
+
+class DFS(Algorithm):
     def __init__(self, depth_limit: int = 200):
         self.depth_limit = depth_limit
         self.visited: dict(int, bool) = {}
@@ -50,8 +65,14 @@ class DFS:
 
         return False
 
+    def get_nodes(self) -> int:
+        return self.nodes
 
-class BFS:
+    def get_path(self) -> deque[Position] | None:
+        return self.path
+
+
+class BFS(Algorithm):
     def __init__(self):
         self.queue: deque[State] = deque()
         self.parent: dict[int, (int | None, Position | None)] = {}
@@ -97,10 +118,10 @@ class BFS:
                         self.won_state = hash(new_state)
                         return
 
-    @cached_property
-    def path(self) -> deque[Position] | None:
-        if not self.won_state:
-            return None
+    def get_nodes(self) -> int:
+        return self.nodes
+
+    def get_path(self) -> deque[Position] | None:
         path = deque()
         current_state = self.won_state
         while current_state:

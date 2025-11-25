@@ -1,5 +1,3 @@
-import time
-
 import pygame
 from pygame import Vector2
 
@@ -23,14 +21,20 @@ from commands import MoveCommand
 from popup import GameOverPopup, VictoryPopup
 from history import HistoryManager
 from position import Position
-from algorithms import BFS, DFS
+from algorithms import Algorithms
+from factories import DFSFactory, BFSFactory
 
 
 class UserInterface(Observer):
-    def __init__(self, level_file="levels/level1.txt"):
+    def __init__(
+        self,
+        level_file="levels/level1.txt",
+        solve_algo: Algorithms | None = None,
+    ):
         pygame.init()
 
         self.level_file = level_file
+        self.solve_algo = solve_algo
         self.state = State(self.level_file)
 
         self.cell_size = Vector2(48, 48)
@@ -258,19 +262,25 @@ class UserInterface(Observer):
         self.paused = True
         self.victory_popup.show()
 
+    def solve(self):
+        path = None
+        if self.solve_algo == Algorithms.DFS:
+            dfs = DFSFactory(200)
+            path = dfs.solve(self.state)
+        elif self.solve_algo == Algorithms.BFS:
+            bfs = BFSFactory()
+            path = bfs.solve(self.state)
+        return path
+
     def run(self):
-        bfs = BFS()
-        start_time = time.time()
-        bfs(self.state)
-        end_time = time.time()
-        print(f"BFS time: {end_time - start_time} seconds")
-        print(f"BFS nodes: {bfs.nodes}")
-        print(f"BFS path length: {len(bfs.path)}")
+        path = self.solve()
         timer = 0
         while self.running:
             self.process_input()
-            if bfs.path and timer == 0:
-                self.commands.append(MoveCommand(self.state, self.player, bfs.path.popleft()))
+            if path and timer == 0:
+                self.commands.append(
+                    MoveCommand(self.state, self.player, path.popleft())
+                )
                 timer += 10
             self.update()
             self.render()
