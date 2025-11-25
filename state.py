@@ -14,7 +14,7 @@ from position import Position
 
 
 class State:
-    def __init__(self, level_file="levels/level-1.txt"):
+    def __init__(self, level_file="levels/level1.txt"):
         level_data, world_size = self.read_level_file(level_file)
         self.world_size = world_size
         self.moves = [Position(0, 1), Position(0, -1), Position(1, 0), Position(-1, 0)]
