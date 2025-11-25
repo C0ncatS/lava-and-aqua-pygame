@@ -27,7 +27,7 @@ from algorithms import BFS, DFS
 
 
 class UserInterface(Observer):
-    def __init__(self, level_file="levels/level-1.txt"):
+    def __init__(self, level_file="levels/level1.txt"):
         pygame.init()
 
         self.level_file = level_file
