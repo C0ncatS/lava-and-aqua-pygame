@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from collections import deque
-from functools import cached_property
 
 from state import State
 from commands import MoveCommand
@@ -19,6 +18,10 @@ class Algorithm(ABC):
         pass
 
     @abstractmethod
+    def get_visited_count(self) -> int:
+        pass
+
+    @abstractmethod
     def get_path(self) -> deque[Position] | None:
         pass
 
@@ -32,11 +35,13 @@ class DFS(Algorithm):
         self.depth_limit = depth_limit
         self.visited: dict(int, bool) = {}
         self.nodes = 0
+        self.visited_count = 0
         self.path: deque[Position] = deque()
 
     def mark_as_visited(self, state: State):
         state_key = hash(state)
         self.visited[state_key] = True
+        self.visited_count += 1
 
     def check(self, state: State):
         state_key = hash(state)
@@ -48,11 +53,12 @@ class DFS(Algorithm):
         return new_state
 
     def __call__(self, state: State, depth: int = 0):
+        self.nodes += 1
+
         if depth > self.depth_limit:
             return False
 
         self.mark_as_visited(state)
-        self.nodes += 1
         if state.is_won():
             return True
         for move in state.get_possible_moves(state.player.position, check_blocks=False):
@@ -68,6 +74,9 @@ class DFS(Algorithm):
     def get_nodes(self) -> int:
         return self.nodes
 
+    def get_visited_count(self) -> int:
+        return self.visited_count
+
     def get_path(self) -> deque[Position] | None:
         return self.path
 
@@ -78,11 +87,13 @@ class BFS(Algorithm):
         self.parent: dict[int, (int | None, Position | None)] = {}
         self.visited: dict[int, bool] = {}
         self.nodes = 0
+        self.visited_count = 0
         self.won_state = None
 
     def mark_as_visited(self, state: State):
         state_key = hash(state)
         self.visited[state_key] = True
+        self.visited_count += 1
 
     def set_parent(self, state: State, parent: State | None, move: Position | None):
         state_key = hash(state)
@@ -105,10 +116,8 @@ class BFS(Algorithm):
         while self.queue:
             current_state = self.queue.popleft()
             self.nodes += 1
-            for move in current_state.get_possible_moves(
-                current_state.player.position,
-                check_blocks=False,
-            ):
+            pos = current_state.player.position
+            for move in current_state.get_possible_moves(pos, check_blocks=False):
                 new_state = self.apply_move(current_state, move)
                 if self.check(new_state):
                     self.queue.append(new_state)
@@ -120,6 +129,9 @@ class BFS(Algorithm):
 
     def get_nodes(self) -> int:
         return self.nodes
+
+    def get_visited_count(self) -> int:
+        return self.visited_count
 
     def get_path(self) -> deque[Position] | None:
         path = deque()
