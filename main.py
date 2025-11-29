@@ -2,10 +2,8 @@ import os
 
 import pygame
 
-import algorithms
-from menu import MenuUI
+from menu import MenuUI, AlgorithmMenu
 from ui import UserInterface
-from algorithms import Algorithms
 
 
 os.environ["SDL_VIDEO_CENTERED"] = "1"
@@ -16,11 +14,19 @@ while running:
     selected_level = menu.run()
 
     if selected_level:
+        # Show algorithm selection menu
+        algo_menu = AlgorithmMenu()
+        selected_algorithm = algo_menu.run()
+
+        if selected_algorithm == "back":
+            # User pressed ESC, go back to level selection
+            continue
+
         playing_level = True
         current_level = selected_level
 
         while playing_level:
-            user_interface = UserInterface(current_level, Algorithms.BFS)
+            user_interface = UserInterface(current_level, selected_algorithm)
             action = user_interface.run()
 
             if action == "retry":
