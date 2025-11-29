@@ -41,7 +41,6 @@ class DFS(Algorithm):
     def mark_as_visited(self, state: State):
         state_key = hash(state)
         self.visited[state_key] = True
-        self.visited_count += 1
 
     def check(self, state: State):
         state_key = hash(state)
@@ -54,11 +53,12 @@ class DFS(Algorithm):
 
     def __call__(self, state: State, depth: int = 0):
         self.nodes += 1
+        self.visited_count += 1
+        self.mark_as_visited(state)
 
         if depth > self.depth_limit:
             return False
 
-        self.mark_as_visited(state)
         if state.is_won():
             return True
         for move in state.get_possible_moves(state.player.position, check_blocks=False):
@@ -93,7 +93,6 @@ class BFS(Algorithm):
     def mark_as_visited(self, state: State):
         state_key = hash(state)
         self.visited[state_key] = True
-        self.visited_count += 1
 
     def set_parent(self, state: State, parent: State | None, move: Position | None):
         state_key = hash(state)
@@ -112,16 +111,19 @@ class BFS(Algorithm):
     def __call__(self, state: State):
         self.queue.append(state)
         self.set_parent(state, None, None)
+        self.nodes += 1
+        self.visited_count += 1
         self.mark_as_visited(state)
         while self.queue:
             current_state = self.queue.popleft()
-            self.nodes += 1
+            self.visited_count += 1
             pos = current_state.player.position
             for move in current_state.get_possible_moves(pos, check_blocks=False):
                 new_state = self.apply_move(current_state, move)
                 if self.check(new_state):
                     self.queue.append(new_state)
                     self.set_parent(new_state, current_state, move)
+                    self.nodes += 1
                     self.mark_as_visited(new_state)
                     if new_state.is_won():
                         self.won_state = hash(new_state)

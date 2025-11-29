@@ -17,12 +17,12 @@ class AlgorithmFactory(ABC):
         start_time = time.time()
         algorithm(state)
         end_time = time.time()
-        nodes = algorithm.get_nodes()
         visited_count = algorithm.get_visited_count()
+        nodes = algorithm.get_nodes()
         path = algorithm.get_path()
         print(f"Time taken: {end_time - start_time} seconds")
-        print(f"Nodes: {nodes}")
         print(f"Visited count: {visited_count}")
+        print(f"Nodes: {nodes}")
         print(f"Path length: {len(path)}")
         return path
 
