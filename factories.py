@@ -28,11 +28,8 @@ class AlgorithmFactory(ABC):
 
 
 class DFSFactory(AlgorithmFactory):
-    def __init__(self, depth_limit: int = 200):
-        self.depth_limit = depth_limit
-
     def create(self) -> Algorithm:
-        return DFS(self.depth_limit)
+        return DFS()
 
 
 class BFSFactory(AlgorithmFactory):

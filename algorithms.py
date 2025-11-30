@@ -31,8 +31,7 @@ class Algorithm(ABC):
 
 
 class DFS(Algorithm):
-    def __init__(self, depth_limit: int = 200):
-        self.depth_limit = depth_limit
+    def __init__(self):
         self.visited: dict(int, bool) = {}
         self.nodes = 0
         self.visited_count = 0
@@ -56,11 +55,9 @@ class DFS(Algorithm):
         self.visited_count += 1
         self.mark_as_visited(state)
 
-        if depth > self.depth_limit:
-            return False
-
         if state.is_won():
             return True
+
         for move in state.get_possible_moves(state.player.position, check_blocks=False):
             new_state = self.apply_move(state, move)
             if self.check(new_state):

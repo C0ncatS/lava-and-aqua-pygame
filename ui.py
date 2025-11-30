@@ -265,7 +265,7 @@ class UserInterface(Observer):
     def solve(self):
         path = None
         if self.solve_algo == Algorithms.DFS:
-            dfs = DFSFactory(200)
+            dfs = DFSFactory()
             path = dfs.solve(self.state)
         elif self.solve_algo == Algorithms.BFS:
             bfs = BFSFactory()
