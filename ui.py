@@ -22,7 +22,7 @@ from popup import GameOverPopup, VictoryPopup
 from history import HistoryManager
 from position import Position
 from algorithms import Algorithms
-from factories import DFSFactory, BFSFactory
+from factories import DFSFactory, BFSFactory, UCSFactory
 
 
 class UserInterface(Observer):
@@ -270,6 +270,9 @@ class UserInterface(Observer):
         elif self.solve_algo == Algorithms.BFS:
             bfs = BFSFactory()
             path = bfs.solve(self.state)
+        elif self.solve_algo == Algorithms.UCS:
+            ucs = UCSFactory()
+            path = ucs.solve(self.state)
         return path
 
     def run(self):

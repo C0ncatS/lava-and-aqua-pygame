@@ -273,6 +273,18 @@ class State:
             )
         )
 
+    def __lt__(self, other) -> bool:
+        return len(self.lavas) < len(other.lavas)
+
+    def __ite__(self, other) -> bool:
+        return len(self.lavas) <= len(other.lavas)
+
+    def __gt__(self, other) -> bool:
+        return len(self.lavas) > len(other.lavas)
+
+    def __gte__(self, other) -> bool:
+        return len(self.lavas) >= len(other.lavas)
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, State):
             return False

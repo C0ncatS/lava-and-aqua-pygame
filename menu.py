@@ -203,16 +203,43 @@ class MenuUI:
         return self.selected_level
 
 
+class AlgorithmConfig:
+    """Configuration for an algorithm button"""
+    def __init__(self, label, algorithm, description, theme):
+        self.label = label
+        self.algorithm = algorithm
+        self.description = description
+        self.theme = theme
+
+
+class ButtonTheme:
+    """Color theme for a button"""
+    GREEN = {"normal": (46, 125, 50), "hover": (76, 175, 80), "border": (27, 94, 32)}
+    BLUE = {"normal": (25, 118, 210), "hover": (66, 165, 245), "border": (13, 71, 161)}
+    PURPLE = {"normal": (123, 31, 162), "hover": (171, 71, 188), "border": (74, 20, 140)}
+    ORANGE = {"normal": (230, 126, 34), "hover": (241, 156, 76), "border": (186, 101, 27)}
+    TEAL = {"normal": (0, 137, 123), "hover": (38, 166, 154), "border": (0, 105, 92)}
+
+
+# Add new algorithms here - just add a new AlgorithmConfig to this list
+ALGORITHM_OPTIONS = [
+    AlgorithmConfig("Manual Play", None, "Play the level yourself", ButtonTheme.GREEN),
+    AlgorithmConfig("Auto: BFS", Algorithms.BFS, "Breadth-First Search (optimal)", ButtonTheme.BLUE),
+    AlgorithmConfig("Auto: DFS", Algorithms.DFS, "Depth-First Search (fast)", ButtonTheme.PURPLE),
+    AlgorithmConfig("Auto: UCS", Algorithms.UCS, "Uniform Cost Search", ButtonTheme.ORANGE),
+]
+
+
 class AlgorithmMenu:
     """Menu for selecting the solving algorithm"""
+
+    BUTTON_WIDTH = 200
+    BUTTON_HEIGHT = 90
+    BUTTON_SPACING = 30
+    MAX_COLUMNS = 4
+
     def __init__(self):
         pygame.init()
-
-        self.window_size = Vector2(800, 600)
-        self.window = pygame.display.set_mode(
-            (int(self.window_size.x), int(self.window_size.y))
-        )
-        pygame.display.set_caption("Lava & Aqua - Choose Mode")
 
         self.clock = pygame.time.Clock()
         self.running = True
@@ -220,67 +247,66 @@ class AlgorithmMenu:
 
         # Load fonts
         self.title_font = pygame.font.Font("fonts/NotoSans-Bold.ttf", 42)
-        self.button_font = pygame.font.Font("fonts/NotoSans-Bold.ttf", 26)
-        self.desc_font = pygame.font.Font("fonts/NotoSans-Bold.ttf", 16)
+        self.button_font = pygame.font.Font("fonts/NotoSans-Bold.ttf", 22)
+        self.desc_font = pygame.font.Font("fonts/NotoSans-Bold.ttf", 14)
 
         # Colors
         self.bg_color = (25, 25, 35)
         self.title_color = (255, 200, 100)
         self.desc_color = (180, 180, 180)
 
+        # Calculate window size based on number of algorithms
+        self.window_size = self._calculate_window_size()
+        self.window = pygame.display.set_mode(
+            (int(self.window_size.x), int(self.window_size.y))
+        )
+        pygame.display.set_caption("Lava & Aqua - Choose Mode")
+
         # Create algorithm buttons
         self.buttons = self._create_buttons()
 
+    def _calculate_window_size(self):
+        """Calculate window size based on number of algorithm options"""
+        num_options = len(ALGORITHM_OPTIONS)
+        columns = min(num_options, self.MAX_COLUMNS)
+        rows = (num_options + self.MAX_COLUMNS - 1) // self.MAX_COLUMNS
+
+        width = columns * self.BUTTON_WIDTH + (columns + 1) * self.BUTTON_SPACING + 100
+        height = 200 + rows * (self.BUTTON_HEIGHT + 60) + 50
+
+        return Vector2(max(600, width), max(400, height))
+
     def _create_buttons(self):
+        """Create buttons dynamically from ALGORITHM_OPTIONS"""
         buttons = []
-        button_width = 220
-        button_height = 100
-        spacing = 40
-        total_width = 3 * button_width + 2 * spacing
+        num_options = len(ALGORITHM_OPTIONS)
+        columns = min(num_options, self.MAX_COLUMNS)
+
+        total_width = columns * self.BUTTON_WIDTH + (columns - 1) * self.BUTTON_SPACING
         start_x = (self.window_size.x - total_width) / 2
-        center_y = self.window_size.y / 2
+        start_y = 180
 
-        # Manual play button - green theme
-        manual_btn = MenuButton(
-            "Manual Play",
-            Vector2(start_x, center_y - button_height / 2),
-            Vector2(button_width, button_height),
-            color_normal=(46, 125, 50),
-            color_hover=(76, 175, 80),
-            color_border=(27, 94, 32),
-            color_text=(255, 255, 255)
-        )
-        manual_btn.algorithm = None
-        manual_btn.description = "Play the level yourself"
-        buttons.append(manual_btn)
+        for index, config in enumerate(ALGORITHM_OPTIONS):
+            col = index % self.MAX_COLUMNS
+            row = index // self.MAX_COLUMNS
 
-        # BFS button - blue theme
-        bfs_btn = MenuButton(
-            "Auto: BFS",
-            Vector2(start_x + button_width + spacing, center_y - button_height / 2),
-            Vector2(button_width, button_height),
-            color_normal=(25, 118, 210),
-            color_hover=(66, 165, 245),
-            color_border=(13, 71, 161),
-            color_text=(255, 255, 255)
-        )
-        bfs_btn.algorithm = Algorithms.BFS
-        bfs_btn.description = "Breadth-First Search (optimal)"
-        buttons.append(bfs_btn)
+            position = Vector2(
+                start_x + col * (self.BUTTON_WIDTH + self.BUTTON_SPACING),
+                start_y + row * (self.BUTTON_HEIGHT + 60)
+            )
 
-        # DFS button - purple theme
-        dfs_btn = MenuButton(
-            "Auto: DFS",
-            Vector2(start_x + 2 * (button_width + spacing), center_y - button_height / 2),
-            Vector2(button_width, button_height),
-            color_normal=(123, 31, 162),
-            color_hover=(171, 71, 188),
-            color_border=(74, 20, 140),
-            color_text=(255, 255, 255)
-        )
-        dfs_btn.algorithm = Algorithms.DFS
-        dfs_btn.description = "Depth-First Search (fast)"
-        buttons.append(dfs_btn)
+            btn = MenuButton(
+                config.label,
+                position,
+                Vector2(self.BUTTON_WIDTH, self.BUTTON_HEIGHT),
+                color_normal=config.theme["normal"],
+                color_hover=config.theme["hover"],
+                color_border=config.theme["border"],
+                color_text=(255, 255, 255)
+            )
+            btn.algorithm = config.algorithm
+            btn.description = config.description
+            buttons.append(btn)
 
         return buttons
 

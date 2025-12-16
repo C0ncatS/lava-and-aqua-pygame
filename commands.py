@@ -18,7 +18,7 @@ class MoveCommand(Command):
         self.move = move
 
     def run(self):
-        if self.player.status != "alive":
+        if self.player.status == "dead":
             return
 
         new_pos = Position.from_vector(
