@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 import time
 
-from algorithms import Algorithm, DFS, BFS, UCS
+from algorithms import Algorithm, DFS, BFS, UCS, HillClimb
 from state import State
 from position import Position
 
@@ -40,3 +40,8 @@ class BFSFactory(AlgorithmFactory):
 class UCSFactory(AlgorithmFactory):
     def create(self) -> Algorithm:
         return UCS()
+
+
+class HillClimbFactory(AlgorithmFactory):
+    def create(self) -> Algorithm:
+        return HillClimb()

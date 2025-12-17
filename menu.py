@@ -7,7 +7,10 @@ from algorithms import Algorithms
 
 class MenuButton:
     """Generic button class for menus"""
-    def __init__(self, text, position, size, color_normal, color_hover, color_border, color_text):
+
+    def __init__(
+        self, text, position, size, color_normal, color_hover, color_border, color_text
+    ):
         self.text = text
         self.rect = pygame.Rect(position.x, position.y, size.x, size.y)
         self.hovered = False
@@ -41,8 +44,8 @@ class LevelButton:
         self.hovered = False
         self.color_normal = (70, 130, 180)  # Steel blue
         self.color_hover = (100, 160, 210)  # Lighter blue
-        self.color_border = (40, 90, 140)   # Dark blue
-        self.color_text = (255, 255, 255)   # White
+        self.color_border = (40, 90, 140)  # Dark blue
+        self.color_text = (255, 255, 255)  # White
 
     def check_hover(self, mouse_pos):
         """Check if mouse is hovering over this button"""
@@ -104,13 +107,13 @@ class MenuUI:
         level_files = []
         for filename in os.listdir(self.levels_directory):
             # Exclude test.txt and only include .txt files
-            if filename.endswith('.txt') and filename != 'test.txt':
+            if filename.endswith(".txt") and filename != "test.txt":
                 level_files.append(filename)
 
         def get_level_number(filename):
             # Extract number from filename like "level1.txt" -> 1
             try:
-                return int(filename.replace('level', '').replace('.txt', ''))
+                return int(filename.replace("level", "").replace(".txt", ""))
             except:
                 return 999
 
@@ -129,7 +132,7 @@ class MenuUI:
 
             position = Vector2(
                 start_x + col * (button_size.x + spacing),
-                start_y + row * (button_size.y + spacing)
+                start_y + row * (button_size.y + spacing),
             )
 
             # Create display name (e.g., "Level 1")
@@ -179,9 +182,7 @@ class MenuUI:
 
         # Draw instruction
         instruction_text = self.instruction_font.render(
-            "Select a level to play (ESC to exit)",
-            True,
-            self.instruction_color
+            "Select a level to play (ESC to exit)", True, self.instruction_color
         )
         instruction_rect = instruction_text.get_rect(
             center=(self.window_size.x / 2, 110)
@@ -205,6 +206,7 @@ class MenuUI:
 
 class AlgorithmConfig:
     """Configuration for an algorithm button"""
+
     def __init__(self, label, algorithm, description, theme):
         self.label = label
         self.algorithm = algorithm
@@ -214,19 +216,37 @@ class AlgorithmConfig:
 
 class ButtonTheme:
     """Color theme for a button"""
+
     GREEN = {"normal": (46, 125, 50), "hover": (76, 175, 80), "border": (27, 94, 32)}
     BLUE = {"normal": (25, 118, 210), "hover": (66, 165, 245), "border": (13, 71, 161)}
-    PURPLE = {"normal": (123, 31, 162), "hover": (171, 71, 188), "border": (74, 20, 140)}
-    ORANGE = {"normal": (230, 126, 34), "hover": (241, 156, 76), "border": (186, 101, 27)}
+    PURPLE = {
+        "normal": (123, 31, 162),
+        "hover": (171, 71, 188),
+        "border": (74, 20, 140),
+    }
+    ORANGE = {
+        "normal": (230, 126, 34),
+        "hover": (241, 156, 76),
+        "border": (186, 101, 27),
+    }
     TEAL = {"normal": (0, 137, 123), "hover": (38, 166, 154), "border": (0, 105, 92)}
 
 
 # Add new algorithms here - just add a new AlgorithmConfig to this list
 ALGORITHM_OPTIONS = [
     AlgorithmConfig("Manual Play", None, "Play the level yourself", ButtonTheme.GREEN),
-    AlgorithmConfig("Auto: BFS", Algorithms.BFS, "Breadth-First Search (optimal)", ButtonTheme.BLUE),
-    AlgorithmConfig("Auto: DFS", Algorithms.DFS, "Depth-First Search (fast)", ButtonTheme.PURPLE),
-    AlgorithmConfig("Auto: UCS", Algorithms.UCS, "Uniform Cost Search", ButtonTheme.ORANGE),
+    AlgorithmConfig(
+        "Auto: BFS", Algorithms.BFS, "Breadth-First Search (optimal)", ButtonTheme.BLUE
+    ),
+    AlgorithmConfig(
+        "Auto: DFS", Algorithms.DFS, "Depth-First Search (fast)", ButtonTheme.PURPLE
+    ),
+    AlgorithmConfig(
+        "Auto: UCS", Algorithms.UCS, "Uniform Cost Search", ButtonTheme.ORANGE
+    ),
+    AlgorithmConfig(
+        "Auto: Hill Climb", Algorithms.HILL_CLIMB, "Hill Climb", ButtonTheme.GREEN
+    ),
 ]
 
 
@@ -292,7 +312,7 @@ class AlgorithmMenu:
 
             position = Vector2(
                 start_x + col * (self.BUTTON_WIDTH + self.BUTTON_SPACING),
-                start_y + row * (self.BUTTON_HEIGHT + 60)
+                start_y + row * (self.BUTTON_HEIGHT + 60),
             )
 
             btn = MenuButton(
@@ -302,7 +322,7 @@ class AlgorithmMenu:
                 color_normal=config.theme["normal"],
                 color_hover=config.theme["hover"],
                 color_border=config.theme["border"],
-                color_text=(255, 255, 255)
+                color_text=(255, 255, 255),
             )
             btn.algorithm = config.algorithm
             btn.description = config.description
@@ -346,9 +366,7 @@ class AlgorithmMenu:
 
         # Draw subtitle
         subtitle_text = self.desc_font.render(
-            "Press ESC to go back to level selection",
-            True,
-            self.desc_color
+            "Press ESC to go back to level selection", True, self.desc_color
         )
         subtitle_rect = subtitle_text.get_rect(center=(self.window_size.x / 2, 150))
         self.window.blit(subtitle_text, subtitle_rect)
@@ -373,4 +391,3 @@ class AlgorithmMenu:
             self.clock.tick(60)
 
         return self.selected_algorithm
-

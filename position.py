@@ -14,6 +14,9 @@ class Position:
     def to_vector(self):
         return Vector2(self.x, self.y)
 
+    def __lt__(self, other):
+        return 1
+
     def __hash__(self) -> int:
         return hash((self.x, self.y))
 

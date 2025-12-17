@@ -121,6 +121,10 @@ class State:
             if position in self.blocks:
                 return False
 
+        if kwargs.get("check_lavas", False):
+            if position in self.lavas:
+                return False
+
         return self.is_inside(position)
 
     def is_inside(self, position: Position):
@@ -139,6 +143,9 @@ class State:
 
     def is_won(self):
         return self.is_points_empty() and self.is_goal(self.player.position)
+
+    def manhattan_distance(self, pos1: Position | Vector2, pos2: Position | Vector2):
+        return abs(pos1.x - pos2.x) + abs(pos1.y - pos2.y)
 
     def parse_level(self, level_data):
         for item in level_data:

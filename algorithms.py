@@ -15,6 +15,7 @@ class Algorithms(Enum):
     DFS = "dfs"
     BFS = "bfs"
     UCS = "ucs"
+    HILL_CLIMB = "hill_climb"
 
 
 class Algorithm(ABC):
@@ -27,7 +28,7 @@ class Algorithm(ABC):
         pass
 
     @abstractmethod
-    def get_path(self) -> deque[Position] | None:
+    def get_path(self) -> deque[Position]:
         pass
 
     @abstractmethod
@@ -37,18 +38,16 @@ class Algorithm(ABC):
 
 class DFS(Algorithm):
     def __init__(self):
-        self.visited: dict(int, bool) = {}
-        self.nodes = 0
-        self.visited_count = 0
+        self.visited: dict[State, bool] = {}
+        self.nodes: int = 0
+        self.visited_count: int = 0
         self.path: deque[Position] = deque()
 
     def mark_as_visited(self, state: State):
-        state_key = hash(state)
-        self.visited[state_key] = True
+        self.visited[state] = True
 
     def check(self, state: State):
-        state_key = hash(state)
-        return state_key not in self.visited and state.player.status in ["alive", "won"]
+        return state not in self.visited and state.player.status in ["alive", "won"]
 
     def apply_move(self, state: State, move: Position):
         new_state = state.copy()
@@ -79,31 +78,26 @@ class DFS(Algorithm):
     def get_visited_count(self) -> int:
         return self.visited_count
 
-    def get_path(self) -> deque[Position] | None:
+    def get_path(self) -> deque[Position]:
         return self.path
 
 
 class BFS(Algorithm):
     def __init__(self):
-        self.queue: deque[State] = deque()
-        self.parent: dict[int, (int | None, Position | None)] = {}
-        self.visited: dict[int, bool] = {}
-        self.nodes = 0
-        self.visited_count = 0
-        self.won_state = None
+        self.parent: dict[State, tuple[State | None, Position | None]] = {}
+        self.visited: dict[State, bool] = {}
+        self.nodes: int = 0
+        self.visited_count: int = 0
+        self.won_state: State | None = None
 
     def mark_as_visited(self, state: State):
-        state_key = hash(state)
-        self.visited[state_key] = True
+        self.visited[state] = True
 
     def set_parent(self, state: State, parent: State | None, move: Position | None):
-        state_key = hash(state)
-        parent_key = hash(parent) if parent else None
-        self.parent[state_key] = (parent_key, move)
+        self.parent[state] = (parent, move)
 
     def check(self, state: State):
-        state_key = hash(state)
-        return state_key not in self.visited and state.player.status in ["alive", "won"]
+        return state not in self.visited and state.player.status in ["alive", "won"]
 
     def apply_move(self, state: State, move: Position):
         new_state = state.copy()
@@ -111,24 +105,25 @@ class BFS(Algorithm):
         return new_state
 
     def __call__(self, state: State):
-        self.queue.append(state)
+        queue: deque[State] = deque()
+        queue.append(state)
         self.set_parent(state, None, None)
         self.nodes += 1
         self.visited_count += 1
         self.mark_as_visited(state)
-        while self.queue:
-            current_state = self.queue.popleft()
+        while queue:
+            current_state = queue.popleft()
             self.visited_count += 1
             pos = current_state.player.position
             for move in current_state.get_possible_moves(pos, check_blocks=False):
                 new_state = self.apply_move(current_state, move)
                 if self.check(new_state):
-                    self.queue.append(new_state)
+                    queue.append(new_state)
                     self.set_parent(new_state, current_state, move)
                     self.nodes += 1
                     self.mark_as_visited(new_state)
                     if new_state.is_won():
-                        self.won_state = hash(new_state)
+                        self.won_state = new_state
                         return
 
     def get_nodes(self) -> int:
@@ -137,46 +132,40 @@ class BFS(Algorithm):
     def get_visited_count(self) -> int:
         return self.visited_count
 
-    def get_path(self) -> deque[Position] | None:
-        path = deque()
+    def get_path(self) -> deque[Position]:
+        path: deque[Position] = deque()
         current_state = self.won_state
-        while current_state:
-            parent_key, move = self.parent[current_state]
+        while current_state is not None:
+            parent, move = self.parent[current_state]
             if move is not None:
                 path.appendleft(move)
-            current_state = parent_key
+            current_state = parent
         return path
 
 
 class UCS(Algorithm):
     def __init__(self):
-        self.parent: dict[int, (int | None, Position | None)] = {}
-        self.visited: dict[int, bool] = {}
-        self.distance: dict[int, int] = {}
-        self.nodes = 0
-        self.visited_count = 0
-        self.won_state = None
+        self.parent: dict[State, tuple[State | None, Position | None]] = {}
+        self.visited: dict[State, bool] = {}
+        self.distance: dict[State, int] = {}
+        self.nodes: int = 0
+        self.visited_count: int = 0
+        self.won_state: State | None = None
 
     def is_visited(self, state: State):
-        state_key = hash(state)
-        return state_key in self.visited
+        return state in self.visited
 
     def mark_as_visited(self, state: State):
-        state_key = hash(state)
-        self.visited[state_key] = True
+        self.visited[state] = True
 
     def update_cost(self, state: State, cost: int):
-        state_key = hash(state)
-        self.distance[state_key] = cost
+        self.distance[state] = cost
 
     def check_cost(self, state: State, cost: int):
-        state_key = hash(state)
-        return self.distance.get(state_key, INF) > cost and state.player.status != "dead"
+        return self.distance.get(state, INF) > cost and state.player.status != "dead"
 
     def set_parent(self, state: State, parent: State | None, move: Position | None):
-        state_key = hash(state)
-        parent_key = hash(parent) if parent else None
-        self.parent[state_key] = (parent_key, move)
+        self.parent[state] = (parent, move)
 
     def apply_move(self, state: State, move: Position):
         new_state = state.copy()
@@ -184,7 +173,7 @@ class UCS(Algorithm):
         return new_state
 
     def __call__(self, state: State):
-        heap: [(int, State)] = []
+        heap: list[tuple[int, State]] = []
         heapq.heappush(heap, (0, state))
         self.set_parent(state, None, None)
         self.update_cost(state, 0)
@@ -194,7 +183,7 @@ class UCS(Algorithm):
             self.visited_count += 1
 
             if current_state.is_won():
-                self.won_state = hash(current_state)
+                self.won_state = current_state
                 return
 
             if self.is_visited(current_state):
@@ -219,12 +208,118 @@ class UCS(Algorithm):
     def get_visited_count(self) -> int:
         return self.visited_count
 
-    def get_path(self) -> deque[Position] | None:
-        path = deque()
+    def get_path(self) -> deque[Position]:
+        path: deque[Position] = deque()
         current_state = self.won_state
-        while current_state:
-            parent_key, move = self.parent[current_state]
+        while current_state is not None:
+            parent, move = self.parent[current_state]
             if move is not None:
                 path.appendleft(move)
-            current_state = parent_key
+            current_state = parent
+        return path
+
+
+class HillClimb(Algorithm):
+    def __init__(self):
+        self.visited: dict[State, bool] = {}
+        self.parent: dict[State, tuple[State | None, Position | None]] = {}
+        self.nodes: int = 0
+        self.visited_count: int = 0
+        self.won_state: State | None = None
+
+    def set_parent(self, state: State, parent: State | None, move: Position | None):
+        self.parent[state] = (parent, move)
+
+    def is_visited(self, state: State):
+        return state in self.visited
+
+    def mark_as_visited(self, state: State):
+        self.visited[state] = True
+
+    def apply_move(self, state: State, move: Position):
+        new_state = state.copy()
+        MoveCommand(new_state, new_state.player, move).run()
+        return new_state
+
+    def __call__(self, state: State):
+        heap: list[tuple[int, State]] = []
+        heapq.heappush(heap, (0, state))
+        self.set_parent(state, None, None)
+        self.nodes += 1
+
+        while heap:
+            _, curr_state = heapq.heappop(heap)
+            self.visited_count += 1
+
+            if curr_state.is_won():
+                self.won_state = curr_state
+                return
+
+            if self.is_visited(curr_state):
+                continue
+
+            self.mark_as_visited(curr_state)
+
+            pos = curr_state.player.position
+            for move in curr_state.get_possible_moves(
+                pos,
+                check_blocks=False,
+                check_lavas=True,
+            ):
+                new_state = self.apply_move(curr_state, move)
+                cost = new_state.manhattan_distance(
+                    new_state.player.position,
+                    new_state.goal.position,
+                )
+                if not self.is_visited(new_state):
+                    heapq.heappush(heap, (cost, new_state))
+                    self.set_parent(new_state, curr_state, move)
+                    self.nodes += 1
+
+    def go(
+        self,
+        state: State,
+        parent: State | None = None,
+        move: Position | None = None,
+    ):
+        self.mark_as_visited(state)
+        self.set_parent(state, parent, move)
+
+        if state.is_won():
+            return True, state
+
+        heap: list[tuple[int, State, Position]] = []
+        pos = state.player.position
+        for move in state.get_possible_moves(pos, check_blocks=False, check_lavas=True):
+            new_state = self.apply_move(state, move)
+            c = new_state.manhattan_distance(
+                new_state.player.position,
+                new_state.goal.position,
+            )
+            heapq.heappush(heap, (c, new_state, move))
+
+        while heap:
+            c, new_state, move = heapq.heappop(heap)
+            if not self.is_visited(new_state):
+                is_won, won_state = self.go(new_state, state, move)
+                if is_won:
+                    self.won_state = won_state
+                    return is_won, won_state
+
+        return False, None
+
+    def get_nodes(self) -> int:
+        return self.nodes
+
+    def get_visited_count(self) -> int:
+        return self.visited_count
+
+    def get_path(self) -> deque[Position]:
+        path: deque[Position] = deque()
+        current_state = self.won_state
+        while current_state is not None:
+            parent, move = self.parent[current_state]
+            if move is not None:
+                path.appendleft(move)
+            current_state = parent
         return path
