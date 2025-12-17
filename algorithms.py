@@ -343,7 +343,7 @@ class AStar(Algorithm):
             pos = curr_state.player.position
             for move in curr_state.get_possible_moves(pos, check_blocks=False):
                 new_state = self.apply_move(curr_state, move)
-                cost = new_state.manhattan_distance(
+                h = new_state.manhattan_distance(
                     new_state.player.position,
                     new_state.goal.position,
                 )
@@ -351,11 +351,11 @@ class AStar(Algorithm):
                 if self.is_visited(new_state):
                     continue
 
-                new_cost = self.best_cost[curr_state] + cost
+                new_cost = self.best_cost[curr_state] + 1
                 if self.check(new_state, new_cost):
                     self.best_cost[new_state] = new_cost
                     self.set_parent(new_state, curr_state, move)
-                    heapq.heappush(heap, (new_cost, new_state))
+                    heapq.heappush(heap, (new_cost + h, new_state))
                     self.nodes += 1
 
     def get_nodes(self) -> int:
