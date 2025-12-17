@@ -338,6 +338,8 @@ class AStar(Algorithm):
             if self.is_visited(curr_state):
                 continue
 
+            self.mark_as_visited(curr_state)
+
             pos = curr_state.player.position
             for move in curr_state.get_possible_moves(pos, check_blocks=False):
                 new_state = self.apply_move(curr_state, move)
