@@ -1,3 +1,5 @@
+import os
+
 import pygame
 from pygame import Vector2
 
@@ -133,6 +135,10 @@ class UserInterface(Observer):
             (int(window_size.x), int(window_size.y)),
             pygame.RESIZABLE,
         )
+
+        # Set window caption to show the current level
+        level_name = os.path.basename(self.level_file).replace(".txt", "").replace("level", "Level ")
+        pygame.display.set_caption(f"Lava & Aqua - {level_name} - {self.solve_algo.value}")
 
         # Create popups
         self.game_over_popup = GameOverPopup(window_size)

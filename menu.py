@@ -245,7 +245,7 @@ ALGORITHM_OPTIONS = [
         "Auto: UCS", Algorithms.UCS, "Uniform Cost Search", ButtonTheme.ORANGE
     ),
     AlgorithmConfig(
-        "Auto: Hill Climb", Algorithms.HILL_CLIMB, "Hill Climb", ButtonTheme.GREEN
+        "Auto: Hill Climb", Algorithms.HILL_CLIMB, "Hill Climb", ButtonTheme.TEAL
     ),
 ]
 
