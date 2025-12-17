@@ -230,6 +230,7 @@ class ButtonTheme:
         "border": (186, 101, 27),
     }
     TEAL = {"normal": (0, 137, 123), "hover": (38, 166, 154), "border": (0, 105, 92)}
+    GOLD = {"normal": (255, 193, 7), "hover": (255, 224, 130), "border": (212, 175, 55)}
 
 
 # Add new algorithms here - just add a new AlgorithmConfig to this list
@@ -247,6 +248,7 @@ ALGORITHM_OPTIONS = [
     AlgorithmConfig(
         "Auto: Hill Climb", Algorithms.HILL_CLIMB, "Hill Climb", ButtonTheme.TEAL
     ),
+    AlgorithmConfig("Auto: A*", Algorithms.A_STAR, "A* Search", ButtonTheme.GOLD),
 ]
 
 

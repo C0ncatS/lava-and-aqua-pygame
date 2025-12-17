@@ -16,6 +16,7 @@ class Algorithms(Enum):
     BFS = "bfs"
     UCS = "ucs"
     HILL_CLIMB = "hill_climb"
+    A_STAR = "a_star"
 
 
 class Algorithm(ABC):
@@ -242,41 +243,9 @@ class HillClimb(Algorithm):
         return new_state
 
     def __call__(self, state: State):
-        heap: list[tuple[int, State]] = []
-        heapq.heappush(heap, (0, state))
-        self.set_parent(state, None, None)
-        self.nodes += 1
+        self.run(state)
 
-        while heap:
-            _, curr_state = heapq.heappop(heap)
-            self.visited_count += 1
-
-            if curr_state.is_won():
-                self.won_state = curr_state
-                return
-
-            if self.is_visited(curr_state):
-                continue
-
-            self.mark_as_visited(curr_state)
-
-            pos = curr_state.player.position
-            for move in curr_state.get_possible_moves(
-                pos,
-                check_blocks=False,
-                check_lavas=True,
-            ):
-                new_state = self.apply_move(curr_state, move)
-                cost = new_state.manhattan_distance(
-                    new_state.player.position,
-                    new_state.goal.position,
-                )
-                if not self.is_visited(new_state):
-                    heapq.heappush(heap, (cost, new_state))
-                    self.set_parent(new_state, curr_state, move)
-                    self.nodes += 1
-
-    def go(
+    def run(
         self,
         state: State,
         parent: State | None = None,
@@ -301,12 +270,91 @@ class HillClimb(Algorithm):
         while heap:
             c, new_state, move = heapq.heappop(heap)
             if not self.is_visited(new_state):
-                is_won, won_state = self.go(new_state, state, move)
+                is_won, won_state = self.run(new_state, state, move)
                 if is_won:
                     self.won_state = won_state
                     return is_won, won_state
 
         return False, None
+
+    def get_nodes(self) -> int:
+        return self.nodes
+
+    def get_visited_count(self) -> int:
+        return self.visited_count
+
+    def get_path(self) -> deque[Position]:
+        path: deque[Position] = deque()
+        current_state = self.won_state
+        while current_state is not None:
+            parent, move = self.parent[current_state]
+            if move is not None:
+                path.appendleft(move)
+            current_state = parent
+        return path
+
+
+class AStar(Algorithm):
+    def __init__(self):
+        self.visited: dict[State, bool] = {}
+        self.parent: dict[State, tuple[State | None, Position | None]] = {}
+        self.best_cost: dict[State, int] = {}
+        self.nodes: int = 0
+        self.visited_count: int = 0
+        self.won_state: State | None = None
+
+    def set_parent(self, state: State, parent: State | None, move: Position | None):
+        self.parent[state] = (parent, move)
+
+    def is_visited(self, state: State):
+        return state in self.visited
+
+    def mark_as_visited(self, state: State):
+        self.visited[state] = True
+
+    def apply_move(self, state: State, move: Position):
+        new_state = state.copy()
+        MoveCommand(new_state, new_state.player, move).run()
+        return new_state
+
+    def check(self, state: State, cost: int):
+        return state not in self.best_cost or cost < self.best_cost[state]
+
+    def __call__(self, state: State):
+        heap: list[tuple[int, State]] = []
+        heapq.heappush(heap, (0, state))
+        self.set_parent(state, None, None)
+        self.best_cost[state] = 0
+        self.nodes += 1
+
+        while heap:
+            _, curr_state = heapq.heappop(heap)
+            self.visited_count += 1
+
+            if curr_state.is_won():
+                self.won_state = curr_state
+                return
+
+            if self.is_visited(curr_state):
+                continue
+
+            pos = curr_state.player.position
+            for move in curr_state.get_possible_moves(pos, check_blocks=False):
+                new_state = self.apply_move(curr_state, move)
+                cost = new_state.manhattan_distance(
+                    new_state.player.position,
+                    new_state.goal.position,
+                )
+
+                if self.is_visited(new_state):
+                    continue
+
+                new_cost = self.best_cost[curr_state] + cost
+                if self.check(new_state, new_cost):
+                    self.best_cost[new_state] = new_cost
+                    self.set_parent(new_state, curr_state, move)
+                    heapq.heappush(heap, (new_cost, new_state))
+                    self.nodes += 1
 
     def get_nodes(self) -> int:
         return self.nodes
